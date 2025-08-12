@@ -7,8 +7,11 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security.api_key import APIKeyHeader
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
-import openai
+import openai # Keep this import for os.getenv
 import os # Import the os module
+
+# Import the OpenAI class from the new library structure
+from openai import OpenAI
 
 # Define a secret API key (in a real application, this should be stored securely)
 # For Render deployment, it's better to read this from environment variables
@@ -26,10 +29,13 @@ async def get_api_key(api_key: str = Depends(api_key_header)):
     return api_key
 
 # Configure OpenAI API key by reading from environment variables
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize the OpenAI client with the API key from environment variables
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY")
+)
 
 # Print to confirm the change in Colab environment (won't affect Render)
-print(f"OpenAI API key configured using os.getenv: {bool(openai.api_key)}")
+print(f"OpenAI API key configured using os.getenv: {bool(client.api_key)}")
 
 
 def get_job_name_from_parts(part_names: List[str]) -> str:
@@ -39,12 +45,14 @@ def get_job_name_from_parts(part_names: List[str]) -> str:
     prompt = f"You are an automotive expert. Given the following list of automotive parts, suggest a concise job name (ex. 'Brake Job' or 'Oil Change') that describes the repair or maintenance task they are associated with:\n\n{', '.join(part_names)}\n\nJob Name:"
 
     try:
-        response = openai.Completion.create(
+        # Use the new client.completions.create syntax for text completion models
+        response = client.completions.create(
             model="gpt-3.5-turbo-instruct", # You can choose a different model if needed
             prompt=prompt,
             max_tokens=20, # Limit the response length for a concise name
             temperature=0.5 # Adjust temperature for creativity (lower for more focused, higher for more creative)
         )
+        # Access the text differently in the new response object
         job_name = response.choices[0].text.strip()
         return job_name
     except Exception as e:
