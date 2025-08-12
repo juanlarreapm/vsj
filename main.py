@@ -8,7 +8,7 @@ from fastapi.security.api_key import APIKeyHeader
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import openai
-from google.colab import userdata
+import os
 
 # Define a secret API key (in a real application, this should be stored securely)
 # For Render deployment, it's better to read this from environment variables
@@ -26,7 +26,7 @@ async def get_api_key(api_key: str = Depends(api_key_header)):
 
 # Configure OpenAI API key (replace with your actual API key or use Colab Secrets)
 # It's highly recommended to use Colab Secrets for your API key
-openai.api_key = userdata.get("OPENAI_API_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def get_job_name_from_parts(part_names: List[str]) -> str:
     """
