@@ -40,7 +40,7 @@ print(f"OpenAI API key configured using os.getenv: {bool(client.api_key)}")
 
 def get_job_name_from_parts(part_names: List[str]) -> str:
     """
-    Sends a list of part names to the LLM to generate a job name.
+    Sends a list of part names to the LLM to generate a concise job name.
     """
     prompt = f"You are an automotive expert. Given the following list of automotive parts, suggest a concise job name (ex. 'Brake Job' or 'Oil Change') that describes the repair or maintenance task they are associated with:\n\n{', '.join(part_names)}\n\nJob Name:"
 
@@ -60,7 +60,7 @@ def get_job_name_from_parts(part_names: List[str]) -> str:
         return "Could not generate job name."
 
 
-# Define Pydantic models for response - Reordered for dependencies
+# Define Pydantic models for response
 class PartInfo(BaseModel):
     part_type_id: float
     part_type_name: str
@@ -84,6 +84,7 @@ class JobInfo(BaseModel):
 class FilteredJobInfo(BaseModel):
     job_id: int
     num_orders: int
+    suggested_name: str # Added suggested name field
     parts: List[PartInfo] # This will contain parts filtered by frequency threshold
 
 
@@ -118,9 +119,10 @@ class NewDataModel(BaseModel):
     col2: int
     # Add fields based on the actual columns in your new CSV
 
-class SuggestedJobNameResponse(BaseModel):
-    job_id: int
-    suggested_name: str
+# Removed SuggestedJobNameResponse model as the endpoint is removed
+# class SuggestedJobNameResponse(BaseModel):
+#     job_id: int
+#     suggested_name: str
 
 
 # Define the analysis functions (copied from previous cells)
@@ -337,6 +339,7 @@ def get_filtered_jobs_by_vehicle(
 ):
     """
     Retrieves jobs and parts for a specific vehicle ID, filtered by number of orders and part frequency thresholds.
+    Includes a suggested job name from LLM for each filtered job.
     Requires a valid API key in the 'x-api-key' header.
     """
     # Filter jobs by vehicle ID and num_orders threshold
@@ -371,7 +374,7 @@ def get_filtered_jobs_by_vehicle(
 
         # Filter parts by vehicle ID, job ID, and frequency threshold
         filtered_parts_for_job = parts_by_job_by_vehicle_with_names[
-            (parts_by_job_by_vehicle_with_names["vehicle_id"] == vehicle_id) &
+            (parts_by_job_by_vehicle_with_names["vehicle_id"] == int(vehicle_id)) &
             (parts_by_job_by_vehicle_with_names["job_id"] == job_id) &
             (parts_by_job_by_vehicle_with_names["frequency"] >= frequency_threshold)
         ].sort_values("count", ascending=False)
@@ -388,9 +391,14 @@ def get_filtered_jobs_by_vehicle(
 
         # Only add the job to the list if it has parts that meet the frequency threshold
         if parts_list:
-             filtered_jobs_list.append(FilteredJobInfo(
+            # Get suggested job name for this filtered job
+            part_names_for_llm = [part["part_type_name"] for part in parts_list]
+            suggested_name = get_job_name_from_parts(part_names_for_llm)
+
+            filtered_jobs_list.append(FilteredJobInfo(
                 job_id=int(job_id),
                 num_orders=int(num_orders),
+                suggested_name=suggested_name, # Add suggested name
                 parts=parts_list
             ))
 
@@ -417,24 +425,24 @@ def get_new_data():
     # Return the data as a list of dictionaries
     return new_data_df.to_dict(orient="records")
 
-# New endpoint to get suggested job name from LLM
-@app.get("/suggest_job_name/{job_id}", response_model=SuggestedJobNameResponse, dependencies=[Depends(get_api_key)])
-def suggest_job_name(job_id: int):
-    """
-    Retrieves parts for a job ID and suggests a job name using an LLM.
-    Requires a valid API key in the 'x-api-key' header.
-    """
-    # Retrieve parts for the given job ID
-    parts_for_job = parts_by_job_by_vehicle_with_names[parts_by_job_by_vehicle_with_names["job_id"] == float(job_id)]
+# Removed New endpoint to get suggested job name from LLM
+# @app.get("/suggest_job_name/{job_id}", response_model=SuggestedJobNameResponse, dependencies=[Depends(get_api_key)])
+# def suggest_job_name(job_id: int):
+#     """
+#     Retrieves parts for a job ID and suggests a job name using an LLM.
+#     Requires a valid API key in the 'x-api-key' header.
+#     """
+#     # Retrieve parts for the given job ID
+#     parts_for_job = parts_by_job_by_vehicle_with_names[parts_by_job_by_vehicle_with_names["job_id"] == float(job_id)]
 
-    if parts_for_job.empty:
-        raise HTTPException(status_code=404, detail=f"No parts found for Job ID: {job_id}")
+#     if parts_for_job.empty:
+#         raise HTTPException(status_code=404, detail=f"No parts found for Job ID: {job_id}")
 
-    # Get the list of part names
-    part_names = parts_for_job["part_type_name"].tolist()
+#     # Get the list of part names
+#     part_names = parts_for_job["part_type_name"].tolist()
 
-    # Call the LLM interaction function
-    suggested_name = get_job_name_from_parts(part_names)
+#     # Call the LLM interaction function
+#     suggested_name = get_job_name_from_parts(part_names)
 
-    # Return the suggested name
-    return SuggestedJobNameResponse(job_id=job_id, suggested_name=suggested_name)
+#     # Return the suggested name
+#     return SuggestedJobNameResponse(job_id=job_id, suggested_name=suggested_name)
