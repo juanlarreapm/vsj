@@ -4,3 +4,4 @@ networkx
 python-louvain
 uvicorn
 pydantic
+openai
