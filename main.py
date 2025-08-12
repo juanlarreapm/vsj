@@ -392,7 +392,7 @@ def get_filtered_jobs_by_vehicle(
         # Only add the job to the list if it has parts that meet the frequency threshold
         if parts_list:
             # Get suggested job name for this filtered job
-            part_names_for_llm = [part["part_type_name"] for part in parts_list]
+            part_names_for_llm = [part.part_type_name for part in parts_list]
             suggested_name = get_job_name_from_parts(part_names_for_llm)
 
             filtered_jobs_list.append(FilteredJobInfo(
