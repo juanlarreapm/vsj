@@ -8,7 +8,7 @@ from fastapi.security.api_key import APIKeyHeader
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import openai
-import os
+import os # Import the os module
 
 # Define a secret API key (in a real application, this should be stored securely)
 # For Render deployment, it's better to read this from environment variables
@@ -20,13 +20,17 @@ api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 async def get_api_key(api_key: str = Depends(api_key_header)):
     """Validates the provided API key."""
     # In a real application, read SECRET_API_KEY from environment variables for security
+    # Now reading from environment variables
     if api_key is None or api_key != SECRET_API_KEY:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API Key")
     return api_key
 
-# Configure OpenAI API key (replace with your actual API key or use Colab Secrets)
-# It's highly recommended to use Colab Secrets for your API key
+# Configure OpenAI API key by reading from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Print to confirm the change in Colab environment (won't affect Render)
+print(f"OpenAI API key configured using os.getenv: {bool(openai.api_key)}")
+
 
 def get_job_name_from_parts(part_names: List[str]) -> str:
     """
